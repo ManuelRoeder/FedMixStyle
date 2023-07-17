@@ -7,12 +7,12 @@ subdomain_id: 0 # domain id of server pretraining
 dataset_path: "data/"
 
 # model setup
-net: "resnet34"
+net: "resnet50"
 adaptation_type: "end_2_end"
 optimizer: "sgd"
 
 # hardware - change to gpu/cpu if required
-accelerator: "cpu"
+accelerator: "gpu"
 devices: "1"
 
 # federated training configuration

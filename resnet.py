@@ -4,7 +4,7 @@ Modified based on torchvision.models.resnet.
 import torch
 from torchvision import models
 from torch.hub import load_state_dict_from_url
-from torchvision.models.resnet import BasicBlock, Bottleneck, model_urls
+from torchvision.models.resnet import BasicBlock, Bottleneck
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d',
@@ -51,9 +51,14 @@ class ResNet(models.ResNet):
 def _resnet(arch, block, layers, pretrained, progress, **kwargs):
     model = ResNet(block, layers, **kwargs)
     if pretrained:
-        state_dict = load_state_dict_from_url(model_urls[arch],
-                                              progress=progress)
-        model.load_state_dict(state_dict, strict=False)
+        weight_enum = torch.hub.load("pytorch/vision", "get_model_weights", name=arch)
+        url = ""
+        for weight in weight_enum:
+            url = weight.url
+            #print(url)
+        weights = torch.hub.load_state_dict_from_url(url, progress=progress)
+        model.load_state_dict(weights, strict=False)
+        #print("Done")
     return model
 
 

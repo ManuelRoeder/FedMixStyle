@@ -6,11 +6,11 @@ dataset_path: "data/"
 #subdomain_id: 0 # source domain id to load model from
 
 # model setup
-net: "resnet34"
+net: "resnet50"
 optimizer: "sgd"
 
 # hardware - change to gpu/cpu if required
-accelerator: "cpu"
+accelerator: "gpu"
 devices: "1"
 
 # training configuration
