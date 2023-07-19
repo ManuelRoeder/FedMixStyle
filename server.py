@@ -60,7 +60,7 @@ from lightningdata import Digit5DataModule, OfficeHomeDataModule, Office31DataMo
 from torch.utils.data import Subset, DataLoader
 
 import common
-from strategy import FedAcrossStrategy
+from strategy import FedMixStyleStrategy
 from common import add_project_specific_args, signal_handler_free_cuda, Defaults, test_prototypes, NetworkType, LogParameters
 from models import ServerDataModel
 from domainNet_waste_datamodule import DomainNetWasteDataModule
@@ -172,7 +172,7 @@ def pre_train_server_model(model, datamodule, trainer_args, domain_name, create_
         callback_list.append(logparams_callback)
     checkpoint_callback = ModelCheckpoint(monitor="val_acc", verbose=True, auto_insert_metric_name=True, mode="max")
     callback_list.append(checkpoint_callback)
-    early_stopping_callback = EarlyStopping(monitor="classifier_loss", min_delta=0.005, patience=5, verbose=True, mode="min")
+    early_stopping_callback = EarlyStopping(monitor="classifier_loss", min_delta=0.005, patience=15, verbose=True, mode="min")
     callback_list.append(early_stopping_callback)
     lr_monitor = LearningRateMonitor(logging_interval='step')
     callback_list.append(lr_monitor)
@@ -249,7 +249,7 @@ def main() -> None:
     # server side evaluation training configuration
     parser = Trainer.add_argparse_args(parser)
     # strategy-specific arguments
-    parser = FedAcrossStrategy.add_strategy_specific_args(parser)
+    parser = FedMixStyleStrategy.add_strategy_specific_args(parser)
     # add parsing from config file
     parser.add_argument('--config_file', action=ActionConfigFile)
     # parse arguments, skip checks
@@ -309,7 +309,7 @@ def main() -> None:
                                                             lr=Defaults.SERVER_LR,
                                                             momentum=Defaults.SERVER_LR_MOMENTUM,
                                                             gamma=Defaults.SERVER_LR_GAMMA,
-                                                            weight_decay=Defaults.SERVER_LR_WD,
+                                                            weight_decay=Defaults.SERVER_LR_WD_2,
                                                             epsilon=Defaults.SERVER_LOSS_EPSILON,
                                                             net=args.net,
                                                             optimizer=args.optimizer,
@@ -341,7 +341,7 @@ def main() -> None:
                                                                  lr=Defaults.SERVER_LR,
                                                                  momentum=Defaults.SERVER_LR_MOMENTUM,
                                                                  gamma=Defaults.SERVER_LR_GAMMA,
-                                                                 weight_decay=Defaults.SERVER_LR_WD,
+                                                                 weight_decay=Defaults.SERVER_LR_WD_2,
                                                                  epsilon=Defaults.SERVER_LOSS_EPSILON,
                                                                  net=args.net,
                                                                  optimizer=args.optimizer,
@@ -381,7 +381,7 @@ def main() -> None:
                                                              lr=Defaults.SERVER_LR,
                                                              momentum=Defaults.SERVER_LR_MOMENTUM,
                                                              gamma=Defaults.SERVER_LR_GAMMA,
-                                                             weight_decay=Defaults.SERVER_LR_WD,
+                                                             weight_decay=Defaults.SERVER_LR_WD_2,
                                                              epsilon=Defaults.SERVER_LOSS_EPSILON,
                                                              net=args.net,
                                                              optimizer=args.optimizer,
@@ -431,7 +431,7 @@ def main() -> None:
     gc.collect()
 
     # STRATEGY CONFIGURATION: pass pretrained model to server
-    strategy = FedAcrossStrategy.from_argparse_args(args,
+    strategy = FedMixStyleStrategy.from_argparse_args(args,
                                                            server_model=lightning_flower_server_model,
                                                            server_trainer_args=args)
     # SERVER SETUP
@@ -460,6 +460,9 @@ if __name__ == "__main__":
         print("[SERVER] Using CUDA acceleration")
     else:
         print("[SERVER] Using CPU acceleration")
+
+    # configure precision
+    torch.set_float32_matmul_precision('medium')
 
     # start and run FL server
     main()

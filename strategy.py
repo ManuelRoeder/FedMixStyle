@@ -37,8 +37,8 @@ from lightningflower.utility import boolean_string
 from pytorch_lightning import Trainer
 
 
-class FedAcrossStrategy(LightningFlowerBaseStrategy, FedAvg):
-    """Configurable FedAcross strategy implementation."""
+class FedMixStyleStrategy(LightningFlowerBaseStrategy, FedAvg):
+    """Configurable FedMixStyle strategy implementation."""
 
     # pylint: disable=too-many-arguments,too-many-instance-attributes
     def __init__(self,
@@ -80,12 +80,12 @@ class FedAcrossStrategy(LightningFlowerBaseStrategy, FedAvg):
         self.N = N
         self.K = K
 
-        print("[STRATEGY] Init FedAcross Strategy")
+        print("[STRATEGY] Init FedMixStyle Strategy")
 
     @staticmethod
     def add_strategy_specific_args(parent_parser):
         # add base LightningFlowerFedAvgStrategy argument group
-        parser = parent_parser.add_argument_group("FedAcrossStrategy")
+        parser = parent_parser.add_argument_group("FedMixStyleStrategy")
         # FewShot specific arguments
         parser.add_argument("--K", type=int, default=7)
         parser.add_argument("--N", type=int, default=10)

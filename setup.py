@@ -4,18 +4,18 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 required_packages = [
-    "lightningflower", "lightningdata-modules", "torchmetrics", "torchsummary"
+    "lightningflower", "lightningdata-modules", "torchmetrics", "tensorboard"
 ]
 
 setup(
-    name="proto_fs",
+    name="FedMixStyle",
     version="0.1.0",
-    description="Using prototypical networks and Few-Shot Learning in a Federated Learning setup",
+    description="Efficient Cross-Domain Federated Learning by MixStyle Approximation",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/ManuelRoeder/proto_fs",
+    url="https://github.com/ManuelRoeder/FedMixStyle",
     author="Manuel Roeder",
-    author_email="manuel.roeder@web.de",
+    author_email="mroeder57@gmail.com",
     license="MIT",
     #packages=["lightningflower"],
     install_requires=required_packages,

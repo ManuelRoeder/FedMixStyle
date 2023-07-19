@@ -71,10 +71,6 @@ def init_weights(m):
 def op_copy(optimizer):
     for param_group in optimizer.param_groups:
         param_group['lr0'] = param_group['lr'] * param_group['lr_mult']
-        # @todo: see if this works here
-        #param_group['weight_decay'] = 1e-3
-        #param_group['momentum'] = 0.9
-        #param_group['nesterov'] = True
     return optimizer
 
 
@@ -86,6 +82,19 @@ def lr_scheduler(optimizer, iter_num, max_iter, gamma=10, power=0.75):
         param_group['momentum'] = 0.9
         param_group['nesterov'] = True
     return optimizer
+
+
+def lr_schedule_2(optimizer, epoch, n_epoch):
+    def lr_decay(LR, n_epoch, e):
+        return LR / (1 + 10 * e / n_epoch) ** 0.75
+
+    for i in range(len(optimizer.param_groups)):
+        if i < len(optimizer.param_groups) - 1:
+            optimizer.param_groups[i]['lr'] = lr_decay(
+                optimizer.param_groups[i]['lr0'], n_epoch, epoch)
+        else:
+            optimizer.param_groups[i]['lr'] = lr_decay(
+                optimizer.param_groups[i]['lr0'], n_epoch, epoch) * 10
 
 
 class DataModelBase(pl.LightningModule):
@@ -181,8 +190,9 @@ class ServerDataModel(DataModelBase):
                                                   use_gpu=self.device == "cuda")(predictions, labels)
         self.log("classifier_loss", classifier_loss)
         self.log("train_acc", self.train_acc)
-        lr_scheduler(optimizer=self.optimizers(), iter_num=self.trainer.global_step,
-                     max_iter=self.trainer.estimated_stepping_batches)
+        #lr_scheduler(optimizer=self.optimizers(), iter_num=self.trainer.global_step,
+                     #max_iter=self.trainer.estimated_stepping_batches)
+        lr_schedule_2(optimizer=self.optimizers(), epoch=self.trainer.current_epoch, n_epoch=self.trainer.max_epochs)
         # return train loss
         return {'loss': classifier_loss, 'train_acc': self.train_acc}
 

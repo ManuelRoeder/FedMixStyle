@@ -63,6 +63,7 @@ class Defaults(object):
     SERVER_LR_GAMMA = 0.0002
     SERVER_LR_MOMENTUM = 0.9
     SERVER_LR_WD = 0.001
+    SERVER_LR_WD_2 = 0.005
     SERVER_LOSS_EPSILON = 0.1
 
     # server federated learning attributes
@@ -82,7 +83,7 @@ def signal_handler_free_cuda(sig, frame):
 
 
 def add_project_specific_args(parent_parser):
-    parser = parent_parser.add_argument_group("FedAcross")
+    parser = parent_parser.add_argument_group("FedMixStyle")
     parser.add_argument("--net", type=str, default="resnet50")
     parser.add_argument("--pretrain", type=boolean_string, default=False)
     parser.add_argument("--upstream", type=boolean_string, default=False)

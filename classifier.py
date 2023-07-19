@@ -101,16 +101,27 @@ class Classifier(nn.Module):
             such as the relative learning rate of each layer
         """
         if not target_adaptation:
-            params = [
-                {"params": self.backbone.parameters(), "lr_mult": 0.1},
-                {"params": self.bottleneck.parameters(), "lr_mult": 1.},
-                {"params": self.head.parameters(), "lr_mult": 1.}
-            ]
+            #params = [
+                #{"params": self.backbone.parameters(), "lr_mult": 0.1},
+                #{"params": self.bottleneck.parameters(), "lr_mult": 1.},
+                #{"params": self.head.parameters(), "lr_mult": 1.}
+            #]
+            params = []
+            for k, v in self.backbone.named_parameters():
+                if not k.__contains__('fc'):
+                    params += [{'params': v, 'lr_mult': 1.0}]
+                else:
+                    params += [{'params': v, 'lr_mult': 10.0}]
+            for k, v in self.bottleneck.named_parameters():
+                if not k.__contains__('0'):
+                    params += [{'params': v, 'lr_mult': 1.0}]
+                else:
+                    params += [{'params': v, 'lr_mult': 10.0}]
+            for k, v in self.head.named_parameters():
+                    params += [{'params': v, 'lr_mult': 10.0}]
         else:
             params = [
-                #{"params": self.backbone.parameters(), "lr_mult": 0.1},
                 {"params": self.bottleneck.parameters(), "lr_mult": 1.}
-                # {"params": self.head.parameters(), "lr_mult": 1.}
             ]
         return params
 

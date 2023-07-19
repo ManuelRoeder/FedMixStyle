@@ -18,17 +18,17 @@ devices: "1"
 # federated training configuration
 pretrain: "True"
 fast_dev_run: "False"
-fast_server_startup: "True"
-num_workers: 4
-batch_size_train: 128
-batch_size_test: 64
+fast_server_startup: "False"
+num_workers: 6
+batch_size_train: 64
+batch_size_test: 32
 num_rounds: 1
 min_fit_clients: 2
 min_available_clients: 2
 min_eval_clients: 2
 max_epochs: 300
 log_every_n_steps: 1
-precision: 16
+precision: 32
 check_val_every_n_epoch: 10
 host_address: "localhost:8080"
 

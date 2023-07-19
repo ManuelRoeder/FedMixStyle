@@ -80,7 +80,7 @@ Capture KB interrupt and free cuda memory
 signal.signal(signal.SIGINT, signal_handler_free_cuda)
 
 
-class FedAcrossClient(LightningFlowerClient):
+class FedMixStyleClient(LightningFlowerClient):
     def __init__(self,
                  model,
                  trainer_args,
@@ -117,7 +117,7 @@ class FedAcrossClient(LightningFlowerClient):
         if trainer_args.upstream:
             self.upstream = trainer_args.upstream
 
-        print("[CLIENT " + str(self.c_id) + "] Init FedAcrossClient with id" + str(c_id))
+        print("[CLIENT " + str(self.c_id) + "] Init FedMixStyleClient with id" + str(c_id))
 
     def get_parameters(self, ins: GetParametersIns) -> GetParametersRes:
         print("[CLIENT " + str(self.c_id) + "] Get params")
@@ -445,7 +445,7 @@ def main() -> None:
         # start flwr client
         try:
             start_client(server_address=args.host_address,
-                         client=FedAcrossClient(model=client_model,
+                         client=FedMixStyleClient(model=client_model,
                                                        trainer_args=args,
                                                        datamodule=dm_train,
                                                        c_id=args.client_id),
