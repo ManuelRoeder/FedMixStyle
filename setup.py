@@ -3,8 +3,8 @@ from setuptools import setup
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-required_packages = [
-    "lightningflower", "lightningdata-modules", "torchmetrics", "tensorboard"
+required_packages = ["tensorboard",
+    "Dassl.pytorch @ git+ssh://git@github.com:ManuelRoeder/Dassl.pytorch.git"
 ]
 
 setup(
@@ -19,7 +19,7 @@ setup(
     license="MIT",
     #packages=["lightningflower"],
     install_requires=required_packages,
-    python_requires='>=3.8.12',
+    #python_requires='>=3.8.12',
     package_data={"": ["README.md", "LICENSE"]},
     classifiers=[
         "Development Status :: 3 - Alpha",

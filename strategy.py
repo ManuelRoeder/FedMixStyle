@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-from typing import Optional, Dict, Tuple, List, Union
+from typing import Optional, Dict, Tuple, List, Union, Any
 
 # Flwr
 from flwr.common import Parameters, Scalar, FitRes, \
@@ -30,111 +30,37 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
-# LightingFlower / Pytorch Lightning
-from lightningflower.client import LightningFlowerClient
-from lightningflower.strategy import LightningFlowerBaseStrategy
-from lightningflower.utility import boolean_string
-from pytorch_lightning import Trainer
+from dassl.engine import build_trainer
 
 
-class FedMixStyleStrategy(LightningFlowerBaseStrategy, FedAvg):
+class FedMixStyleStrategy(FedAvg):
     """Configurable FedMixStyle strategy implementation."""
 
     # pylint: disable=too-many-arguments,too-many-instance-attributes
-    def __init__(self,
-                 fraction_fit,
-                 fraction_eval,
-                 min_fit_clients,
-                 min_eval_clients,
-                 min_available_clients,
-                 accept_failures,
-                 server_model,
-                 N,
-                 K,
-                 server_trainer_args=None,
-                 eval_fn=None
-                 ) -> None:
+    def __init__(
+        self,
+        model_dir: str,
+        config: Any,
+        fraction_fit: float = 1.0,
+        fraction_evaluate: float = 1.0,
+        min_fit_clients: int = 2,
+        min_evaluate_clients: int = 2,
+        min_available_clients: int = 2,
+    ) -> None:
+        super().__init__()
+        self.fraction_fit = fraction_fit
+        self.fraction_evaluate = fraction_evaluate
+        self.min_fit_clients = min_fit_clients
+        self.min_evaluate_clients = min_evaluate_clients
+        self.min_available_clients = min_available_clients
+        # build up model and trainer
+        self.model_dir = model_dir
+        self.config = config
+        self.trainer = build_trainer(config)
+        self.trainer.load_model(model_dir)
 
-        FedAvg.__init__(self,
-                        fraction_fit=fraction_fit,
-                        fraction_evaluate=fraction_eval,
-                        min_fit_clients=min_fit_clients,
-                        min_evaluate_clients=min_eval_clients,
-                        min_available_clients=min_available_clients,
-                        accept_failures=accept_failures,
-                        evaluate_fn=eval_fn
-                        )
-        # init base strategy
-        LightningFlowerBaseStrategy.__init__(self)
-
-        # set the config func
-        self.on_fit_config_fn = self.fit_round
-
-        self.server_trainer_args = server_trainer_args
-        self.server_model = server_model
-
-        # initial parameter from source model
-        self.initial_parameters = self.server_model.get_initial_params()
-
-        # few-shot arguments
-        self.N = N
-        self.K = K
-
-        print("[STRATEGY] Init FedMixStyle Strategy")
-
-    @staticmethod
-    def add_strategy_specific_args(parent_parser):
-        # add base LightningFlowerFedAvgStrategy argument group
-        parser = parent_parser.add_argument_group("FedMixStyleStrategy")
-        # FewShot specific arguments
-        parser.add_argument("--K", type=int, default=7)
-        parser.add_argument("--N", type=int, default=10)
-        parser.add_argument("--episodes", type=int, default=10)
-        parser.add_argument("--network_type", type=str, default="prototypical")
-        parser.add_argument("--adaptation_type", type=str, default="mean_embedding")
-        # FedAvg specific arguments
-        parser.add_argument("--fraction_fit", type=float, default=0.5)
-        parser.add_argument("--fraction_eval", type=float, default=0.5)
-        parser.add_argument("--min_fit_clients", type=int, default=2)
-        parser.add_argument("--min_eval_clients", type=int, default=2)
-        parser.add_argument("--min_available_clients", type=int, default=2)
-        parser.add_argument("--accept_failures", type=boolean_string, default=True)
-        return parent_parser
-
-    def create_trainer_instance(self):
-        trainer: Trainer = None
-        if self.server_trainer_args:
-            trainer = Trainer.from_argparse_args(self.server_trainer_args,
-                                                 deterministic=True,
-                                                 logger=False,
-                                                 enable_checkpointing=False,
-                                                 terminate_on_nan=True,
-                                                 check_val_every_n_epoch=1,
-                                                 detect_anomaly=True)
-        else:
-            trainer = Trainer(max_epochs=1,
-                              logger=False,
-                              enable_checkpointing=False,
-                              terminate_on_nan=True,
-                              deterministic=True,
-                              check_val_every_n_epoch=3,
-                              detect_anomaly=True)
-        return trainer
-
-    def fit_round(self, rnd: int) -> Dict:
-        """Sends the current server configuration to the client"""
-        print("[STRATEGY] Federated Round " + str(rnd))
-        ret_dict = dict()
-        if rnd == 1:
-            print("[STRATEGY] Sending initial prototype configuration to client - N=" + str(self.N) + ", K=" + str(self.K))
-            ret_dict["source_classes"] = b",".join(self.server_model.get_source_classes()).decode("utf-8")
-            ret_dict["K"] = str(self.K)
-            ret_dict["N"] = str(self.N)
-        ret_dict["global_round"] = str(rnd)
-        ret_dict["training_episodes"] = str(self.server_trainer_args.episodes)
-        ret_dict["network_type"] = str(self.server_trainer_args.network_type)
-        ret_dict["adaptation_type"] = str(self.server_trainer_args.adaptation_type)
-        return ret_dict
+    def __repr__(self) -> str:
+        return "FedMixStyle"
 
     def aggregate_fit(
         self,

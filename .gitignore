@@ -2,6 +2,11 @@
 data/
 lightning_logs/
 experiment/
+Dassl.pytorch/
+dassl
+output
+output_results
+output_source_models
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
