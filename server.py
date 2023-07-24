@@ -57,6 +57,7 @@ Capture KB interrupt and free cuda memory
 """
 signal.signal(signal.SIGINT, signal_handler_free_cuda)
 
+NUM_CLIENTS = 2
 
 class FedMixStyleServer(fl.server.Server):
     @staticmethod
@@ -112,14 +113,13 @@ def main() -> None:
             return
 
     # STRATEGY CONFIGURATION: pass pretrained model to server
-    NUM_CLIENTS = 1
     fms_strategy = FedMixStyleStrategy(
         model_dir=args.model_dir,
         config=cfg,
         fraction_fit=0.3,
         fraction_evaluate=0.3,
-        min_fit_clients=1,
-        min_evaluate_clients=1,
+        min_fit_clients=NUM_CLIENTS,
+        min_evaluate_clients=NUM_CLIENTS,
         min_available_clients=NUM_CLIENTS)
 
     # SERVER SETUP

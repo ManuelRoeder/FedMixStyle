@@ -22,7 +22,7 @@ class AbstractLCCS(Vanilla):
     """Abstract class for LCCS trainer.
     """
 
-    def __init__(self, cfg, batch_size=32, ksupport=1, init_epochs=10, grad_update_epochs=10, classifier_update_epochs=10,#200,
+    def __init__(self, cfg, batch_size=32, ksupport=1, init_epochs=10, grad_update_epochs=10, classifier_update_epochs=200,
         user_support_coeff_init=None, classifier_type='linear', finetune_classifier=False, svd_dim=1):
         """
         Args:

@@ -25,11 +25,11 @@ from typing import Optional, Dict, Tuple, List, Union, Any
 
 # Flwr
 from flwr.common import Parameters, Scalar, FitRes, \
-    EvaluateRes  # , weights_to_parameters, parameters_to_weights, FitIns
-from flwr.server.client_manager import ClientManager
+    EvaluateRes, parameters_to_ndarrays, NDArrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
+# dassl.pytorch
 from dassl.engine import build_trainer
 
 
@@ -58,6 +58,8 @@ class FedMixStyleStrategy(FedAvg):
         self.config = config
         self.trainer = build_trainer(config)
         self.trainer.load_model(model_dir)
+        # track adaptation history
+        self.adaptation_history = Dict[str, NDArrays]
 
     def __repr__(self) -> str:
         return "FedMixStyle"
@@ -79,11 +81,23 @@ class FedMixStyleStrategy(FedAvg):
         print("[STRATEGY] Server collecting parameters from round " + str(server_round) + " from number of clients=" + str(len(results)))
 
         for (client, fit_res) in results:
-            client_id = fit_res.metrics["client_id"]
-            duration = fit_res.metrics["duration"]
-            classifier_loss = fit_res.metrics["classifier_loss"]
+            client_id = str(fit_res.metrics["c_id"])
+            #duration = fit_res.metrics["duration"]
+            #classifier_loss = fit_res.metrics["classifier_loss"]
+            parameters = parameters_to_ndarrays(fit_res.parameters)
+            parameter_count = 0
+            for params in parameters:
+                parameter_count = parameter_count + params.size
+            parameter_size = parameters[0].itemsize
+            total_memory_size = parameter_count * parameter_size
+            print("[STRATEGY] Parameter count: " + str(parameter_count))
+            #print("[STRATEGY] Parameter size: " + str(parameter_size))
+            print("[STRATEGY] Total Memory Transferred in Bytes: " + str(total_memory_size))
+
             status = fit_res.status
-            print("[STRATEGY] Client " + str(client_id) + " returned result message= " + status.message + " with duration " + str(duration) + " and classifier_loss=" + str(classifier_loss))
+            # send current weights to dict
+            self.adaptation_history.update({client_id: parameters})
+            print("[STRATEGY] Client " + str(client_id) + " returned result message= " + status.message)
 
         return None, {}
 
@@ -98,10 +112,11 @@ class FedMixStyleStrategy(FedAvg):
             server_round) + " from number of clients=" + str(len(results)))
 
         for (client, eval_res) in results:
-            client_id = eval_res.metrics["client_id"]
-            duration = eval_res.metrics["duration"]
-            accuracy = eval_res.metrics["mean_accuracy"]
-            deviation = eval_res.metrics["st_dev"]
+            client_id = str(eval_res.metrics["c_id"])
+            #duration = eval_res.metrics["duration"]
+            accuracy = eval_res.metrics["accuracy"]
+            error_rate = eval_res.metrics["error_rate"]
+            macro_f1 = eval_res.metrics["macro_f1"]
             status = eval_res.status
-            print("[STRATEGY] Client " + str(client_id) + " returned result message= " + status.message + " with duration " + str(duration) + " and mean eval accuracy=" + accuracy + " with deviation=" + str(deviation))
+            print("[STRATEGY] Client " + str(client_id) + " returned result message= " + status.message + " with accuracy=" + str(accuracy) + ", error rate=" + str(error_rate) + ", f1_score=" + str(macro_f1))
         return None, {}

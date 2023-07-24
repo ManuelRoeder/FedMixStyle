@@ -76,6 +76,7 @@ class FedMixStyleClient(flwr.client.NumPyClient):
         self.build_trainer()
         # set up data loaders
         self.create_k_shot_loaders()
+        self.c_id = cfg.DATASET.NAME + "_" + cfg.DATASET.TARGET_DOMAINS[0]
 
     def build_trainer(self):
         if not self.trainer:
@@ -97,9 +98,17 @@ class FedMixStyleClient(flwr.client.NumPyClient):
         if self.trainer:
             self.trainer.gradient_update_stage()
 
-    def get_parameters(self, config):
+    def get_lccs_parameters(self):
         if self.trainer.model_optms is not None:
-            return [val.cpu().numpy() for _, val in lccs_utils.collect_params(self.trainer.get_optms_params(component='LCCS')).items()]
+            optms_params, _ = self.trainer.get_optms_params(component='LCCS')
+            return [val.cpu().detach().numpy() for val in optms_params]
+        else:
+            return list()
+
+    def get_classifier_parameters(self):
+        if self.trainer.model_optms is not None:
+            optms_params, _ = self.trainer.get_optms_params(component='classifier')
+            return [val.cpu().detach().numpy() for val in optms_params]
         else:
             return list()
 
@@ -131,12 +140,9 @@ class FedMixStyleClient(flwr.client.NumPyClient):
         """
         print("Fit called")
         self.model_update_gradient()
-        # collect LCCS parameters of optimized model
-        #lccs_params, lccs_param_names = lccs_utils.collect_params(self.trainer.model_optms, component='LCCS')
-        #cls_params, cls_param_names = lccs_utils.collect_params(self.trainer.model_optms, component='classifier')
-        #print(lccs_params)
-        #print(cls_params)
-        return self.get_parameters(config={}), 155, {}
+        metrics = dict()
+        metrics["c_id"] = self.c_id
+        return self.get_lccs_parameters(), 155, metrics
 
     def evaluate(
         self, parameters: NDArrays, config: Dict[str, Scalar]
@@ -173,7 +179,8 @@ class FedMixStyleClient(flwr.client.NumPyClient):
         print("Client eval called")
         results = self.trainer.test()
         print(results)
-        return 0.0, 0, {}
+        results.update({"c_id": self.c_id})
+        return 0.0, 0, results
 
 
 def main() -> None:
@@ -194,13 +201,6 @@ def main() -> None:
     print_args(args, cfg)
     print('Collecting env info ...')
     print('** System info **\n{}\n'.format(collect_env_info()))
-
-    #trainer = build_trainer(cfg)
-    #trainer.load_model_nostrict(args.model_dir)
-    #trainer.get_ksupport_loaders()
-    #trainer.initialization_stage()
-    #trainer.gradient_update_stage()
-    #trainer.test()
 
     client_model = FedMixStyleClient(cfg=cfg)
     # load pre-trained model
