@@ -100,15 +100,25 @@ class FedMixStyleClient(flwr.client.NumPyClient):
 
     def get_lccs_parameters(self):
         if self.trainer.model_optms is not None:
-            optms_params, _ = self.trainer.get_optms_params(component='LCCS')
-            return [val.cpu().detach().numpy() for val in optms_params]
+            params, _ = self.trainer.get_optms_params(component='LCCS')
+            ret_list = [y.cpu().detach().numpy() for y in params]
+            return ret_list
         else:
             return list()
 
     def get_classifier_parameters(self):
         if self.trainer.model_optms is not None:
-            optms_params, _ = self.trainer.get_optms_params(component='classifier')
-            return [val.cpu().detach().numpy() for val in optms_params]
+            params, names = self.trainer.get_optms_params(component='classifier')
+            ret_list = [y.cpu().detach().numpy() for y in params]
+            return ret_list
+        else:
+            return list()
+
+    def get_centroids(self):
+        if self.trainer.model_optms is not None:
+            centroids = self.trainer.get_optms_model_centroids()
+            ret_list = [centroid.cpu().detach().numpy() for centroid in centroids]
+            return ret_list
         else:
             return list()
 
@@ -142,7 +152,15 @@ class FedMixStyleClient(flwr.client.NumPyClient):
         self.model_update_gradient()
         metrics = dict()
         metrics["c_id"] = self.c_id
-        return self.get_lccs_parameters(), 155, metrics
+        lccs_params = self.get_lccs_parameters()
+        metrics["lccs_params_size"] = str(len(lccs_params))
+        centroids = self.get_centroids()
+        metrics["centroid_size"] = str(len(centroids))
+        #classifier_params = self.get_classifier_parameters()
+        #metrics["classifier_params_size"] = str(len(classifier_params))
+        merged_list = lccs_params + centroids
+        num_examples = len(self.trainer.support_loader_train_transform.dataset)
+        return merged_list, num_examples, metrics
 
     def evaluate(
         self, parameters: NDArrays, config: Dict[str, Scalar]
@@ -179,8 +197,9 @@ class FedMixStyleClient(flwr.client.NumPyClient):
         print("Client eval called")
         results = self.trainer.test()
         print(results)
+        num_examples = self.trainer.evaluator._total
         results.update({"c_id": self.c_id})
-        return 0.0, 0, results
+        return 0.0, num_examples, results
 
 
 def main() -> None:

@@ -358,6 +358,14 @@ class AbstractLCCS(Vanilla):
     def get_optms_params(self, component):
         return optms.collect_params(self.model_optms, component=component)
 
+    @torch.no_grad()
+    def get_optms_model_centroids(self):
+        return self.model_optms.centroid
+
+    @torch.no_grad()
+    def set_optms_model_centroids(self, centroids):
+            self.model_optms.centroid = centroids
+
 # source classifier
 @TRAINER_REGISTRY.register()
 class LCCSk1n7(AbstractLCCS):
@@ -381,6 +389,10 @@ class LCCSCentroidk1n7(AbstractLCCS):
 class LCCSCentroidk5n35(AbstractLCCS):
     def __init__(self, cfg):
         super().__init__(cfg, batch_size=32, ksupport=5, init_epochs=10, grad_update_epochs=10, svd_dim=35, classifier_type='mean_centroid')
+@TRAINER_REGISTRY.register()
+class LCCSCentroidk5n155(AbstractLCCS):
+    def __init__(self, cfg):
+        super().__init__(cfg, batch_size=32, ksupport=5, init_epochs=10, grad_update_epochs=30, svd_dim=155, classifier_type='mean_centroid')
 @TRAINER_REGISTRY.register()
 class LCCSCentroidk10n70(AbstractLCCS):
     def __init__(self, cfg):

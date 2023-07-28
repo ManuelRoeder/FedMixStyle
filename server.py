@@ -116,8 +116,8 @@ def main() -> None:
     fms_strategy = FedMixStyleStrategy(
         model_dir=args.model_dir,
         config=cfg,
-        fraction_fit=0.3,
-        fraction_evaluate=0.3,
+        fraction_fit=0.3,  # ignored
+        fraction_evaluate=0.3,  # ignored
         min_fit_clients=NUM_CLIENTS,
         min_evaluate_clients=NUM_CLIENTS,
         min_available_clients=NUM_CLIENTS)

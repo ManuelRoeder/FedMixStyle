@@ -23,14 +23,22 @@ SOFTWARE.
 """
 from typing import Optional, Dict, Tuple, List, Union, Any
 
+import numpy as np
+import torch
 # Flwr
+import flwr
 from flwr.common import Parameters, Scalar, FitRes, \
-    EvaluateRes, parameters_to_ndarrays, NDArrays
+    EvaluateRes, parameters_to_ndarrays, NDArrays, ndarrays_to_parameters
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 
+import aggregate
+import plot
 # dassl.pytorch
 from dassl.engine import build_trainer
+
+AGGREGATION_METHOD = "average"# aggregate_median
+PLOT_ON_ARRIVAL = True
 
 
 class FedMixStyleStrategy(FedAvg):
@@ -59,10 +67,40 @@ class FedMixStyleStrategy(FedAvg):
         self.trainer = build_trainer(config)
         self.trainer.load_model(model_dir)
         # track adaptation history
-        self.adaptation_history = Dict[str, NDArrays]
+        self.data_tracker = list(dict())
+        self.prime_weights = None
 
     def __repr__(self) -> str:
         return "FedMixStyle"
+
+    def aggregate_centroids(self, round, method):
+        # aggregate centroids
+        data_dict = self.data_tracker[round - 1]
+        aggr_list = list()
+        for key in data_dict.keys():
+            _, centroids, num_examples = data_dict[key]
+            aggr_list.append((centroids, num_examples))
+        if method == "average":
+            result = aggregate.aggregate(aggr_list)
+        else:
+            result = aggregate.aggregate_median(aggr_list)
+        return result
+
+    def aggregate_weights(self, round, method):
+        # aggregate centroids
+        data_dict = self.data_tracker[round-1]
+        aggr_list = list()
+
+        for key in data_dict.keys():
+            weights, _, num_examples = data_dict[key]
+            aggr_list.append((weights, num_examples))
+        if method == "average":
+            result = aggregate.aggregate(aggr_list)
+        else:
+            result = aggregate.aggregate_median(aggr_list)
+        return result
+
+
 
     def aggregate_fit(
         self,
@@ -79,25 +117,46 @@ class FedMixStyleStrategy(FedAvg):
             return None, {}
 
         print("[STRATEGY] Server collecting parameters from round " + str(server_round) + " from number of clients=" + str(len(results)))
-
+        tmp_dict = dict()
         for (client, fit_res) in results:
             client_id = str(fit_res.metrics["c_id"])
-            #duration = fit_res.metrics["duration"]
-            #classifier_loss = fit_res.metrics["classifier_loss"]
+            lccs_params_size = int(fit_res.metrics["lccs_params_size"])
+            centroid_size = int(fit_res.metrics["centroid_size"])
             parameters = parameters_to_ndarrays(fit_res.parameters)
-            parameter_count = 0
-            for params in parameters:
-                parameter_count = parameter_count + params.size
-            parameter_size = parameters[0].itemsize
-            total_memory_size = parameter_count * parameter_size
-            print("[STRATEGY] Parameter count: " + str(parameter_count))
-            #print("[STRATEGY] Parameter size: " + str(parameter_size))
-            print("[STRATEGY] Total Memory Transferred in Bytes: " + str(total_memory_size))
-
+            num_examples = fit_res.num_examples
+            # split
+            lccs_params, centroids = np.split(parameters, [lccs_params_size], axis=0)
+            if len(lccs_params) == lccs_params_size and len(centroids) == centroid_size:
+                print("Parameter check success")
+            # bookmark
+            tmp_dict[client_id] = (lccs_params, centroids, num_examples)
+            # bookkeeping
+            #parameter_count = 0
+            #for params in parameters:
+                #parameter_count = parameter_count + params.size
+            #parameter_size = parameters[0].itemsize
+            #total_memory_size = parameter_count * parameter_size
+            #print("[STRATEGY] Parameter count: " + str(parameter_count))
+            #print("[STRATEGY] Total Memory Transferred in Bytes: " + str(total_memory_size))
             status = fit_res.status
             # send current weights to dict
-            self.adaptation_history.update({client_id: parameters})
             print("[STRATEGY] Client " + str(client_id) + " returned result message= " + status.message)
+
+        self.data_tracker.append(tmp_dict)
+
+        # aggregations
+        self.weights_prime = self.aggregate_weights(server_round, AGGREGATION_METHOD)
+        self.centroids_prime = self.aggregate_centroids(server_round, AGGREGATION_METHOD)
+
+        if PLOT_ON_ARRIVAL:
+            centroid_list = list()
+            # append mean centroids first
+            centroid_list.extend(self.centroids_prime)
+            last_element = self.data_tracker[-1]
+            for key in last_element.keys():
+                _, centroids, _ = last_element[key]
+                centroid_list.extend(centroids)
+            plot.plot_centroids(centroid_list, len(self.centroids_prime), True)
 
         return None, {}
 
